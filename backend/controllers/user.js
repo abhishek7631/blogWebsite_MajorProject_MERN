@@ -1,4 +1,5 @@
 const User = require("../models/user");
+const Blog = require("../models/blog");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
@@ -23,11 +24,33 @@ exports.login = async (req, res) => {
 
     if (!compare) return res.status(400).json({ message: "Wrong Password" });
 
-    const token = jwt.sign({ id: user._id }, process.env.secret_key, {
-      expiresIn: "30d",
-    });
+    const token = jwt.sign(
+      { id: user._id, name: user.name },
+      process.env.secret_key,
+      { expiresIn: "30d" }
+    );
 
-    res.status(200).json({ message: "User Login Successfully", token });
+    res.status(200).json({
+      message: "User Login Successfully",
+      token,
+      name: user.name,
+      isAdmin: user.isAdmin,
+    });
+  } catch (error) {
+    res.status(400).json({ message: error });
+  }
+};
+
+exports.profile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId).select("-password");
+
+    if (!user) return res.status(400).json({ message: "user not found" });
+
+    const blogs = await Blog.find({ "author.userId": userId });
+
+    res.status(200).json({ user, blogCount: blogs.length, blogs });
   } catch (error) {
     res.status(400).json({ message: error });
   }
